@@ -149,9 +149,15 @@ BASE_STYLE = """
 LOGIN_PAGE = BASE_STYLE + """
 <nav>
   <div class="brand">Secure<span>Bank</span></div>
-  <div><a href="/">Home</a><a href="/login">Sign In</a></div>
+  <div>
+    <a href="/">Vulnerable Login</a>
+    <a href="/secure">Secure Login</a>
+  </div>
 </nav>
 <div class="container">
+  <div style="display:inline-block;background:#fff5f5;color:#c53030;border:1px solid #feb2b2;padding:5px 14px;border-radius:20px;font-size:12px;font-weight:600;margin-bottom:16px;">
+    VULNERABLE MODE
+  </div>
   <h2>Welcome Back</h2>
   <p class="subtitle">Sign in to access your SecureBank account</p>
   <form method="POST" action="/login">
@@ -323,6 +329,80 @@ def logout():
     # Clear the session and return to login page
     session.clear()
     return redirect(url_for("index"))
+
+# ─── Secure login page (parameterized queries — injection-proof) ─────────────
+
+SECURE_LOGIN_PAGE = BASE_STYLE + """
+<nav>
+  <div class="brand">Secure<span>Bank</span></div>
+  <div>
+    <a href="/">Vulnerable Login</a>
+    <a href="/secure">Secure Login</a>
+  </div>
+</nav>
+<div class="container">
+  <div style="display:inline-block;background:#ebf8f0;color:#276749;border:1px solid #9ae6b4;padding:5px 14px;border-radius:20px;font-size:12px;font-weight:600;margin-bottom:16px;">
+    SECURE MODE
+  </div>
+  <h2>Welcome Back</h2>
+  <p class="subtitle">This login is protected against SQL injection</p>
+  <form method="POST" action="/secure">
+    <label>Username</label>
+    <input type="text" name="username" placeholder="Enter your username" autocomplete="off">
+    <label>Password</label>
+    <input type="password" name="password" placeholder="Enter your password">
+    <button type="submit" style="background:#276749;">Sign In Securely</button>
+  </form>
+  {% if message %}
+    <div class="message {{ msg_class }}">{{ message }}</div>
+  {% endif %}
+  <div style="margin-top:24px;padding:14px 16px;background:#f7fafc;border-radius:6px;border:1px solid #e2e8f0;">
+    <p style="font-size:12px;color:#4a5568;font-weight:600;margin-bottom:6px;">How this login is protected:</p>
+    <code style="font-size:11px;color:#2d3748;line-height:1.8;">
+      cursor.execute(<br>
+      &nbsp;&nbsp;"SELECT * FROM users WHERE username = ? AND password = ?",<br>
+      &nbsp;&nbsp;(username, password)<br>
+      )
+    </code>
+    <p style="font-size:11px;color:#718096;margin-top:8px;">
+      The <strong>?</strong> placeholders tell the database to treat user input as plain text,
+      never as part of the SQL command. Injection payloads are harmless here.
+    </p>
+  </div>
+</div>
+<footer>SecureBank &copy; 2026. All rights reserved.</footer>
+"""
+
+@app.route("/secure", methods=["GET", "POST"])
+def secure_login():
+    if request.method == "GET":
+        return render_template_string(SECURE_LOGIN_PAGE, message=None, msg_class="")
+
+    username = request.form.get("username", "")
+    password = request.form.get("password", "")
+
+    # SECURE: parameterized query — user input is never part of the SQL command
+    # The database engine treats username and password as literal strings only
+    conn = sqlite3.connect("users.db")
+    cursor = conn.cursor()
+    try:
+        cursor.execute(
+            "SELECT * FROM users WHERE username = ? AND password = ?",
+            (username, password)
+        )
+        result = cursor.fetchone()
+    except Exception as e:
+        conn.close()
+        return render_template_string(SECURE_LOGIN_PAGE,
+            message=f"Database error: {e}", msg_class="warning")
+    conn.close()
+
+    if result:
+        return render_template_string(SECURE_LOGIN_PAGE,
+            message=f"Login successful! Welcome, {result[1]}.", msg_class="success")
+
+    return render_template_string(SECURE_LOGIN_PAGE,
+        message="Invalid username or password. Injection attempt blocked.", msg_class="error")
 
 if __name__ == "__main__":
     app.run(debug=True, port=5000)
