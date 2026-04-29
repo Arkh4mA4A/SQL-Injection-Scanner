@@ -170,6 +170,29 @@ LOGIN_PAGE = BASE_STYLE + """
   {% if message %}
     <div class="message {{ msg_class }}">{{ message }}</div>
   {% endif %}
+  {% if query_shown %}
+  <div style="margin-top:24px;">
+    <p style="font-size:12px;font-weight:600;color:#4a5568;margin-bottom:8px;">SQL Query Sent to Database:</p>
+    <div style="background:#1a202c;border-radius:6px;padding:14px 16px;font-family:monospace;font-size:13px;line-height:1.7;word-break:break-all;">
+      <span style="color:#68d391;">SELECT</span>
+      <span style="color:#fff;"> * </span>
+      <span style="color:#68d391;">FROM</span>
+      <span style="color:#fff;"> users </span>
+      <span style="color:#68d391;">WHERE</span>
+      <span style="color:#fff;"> username = </span>
+      <span style="color:#fc8181;">'{{ username_shown }}'</span>
+      <span style="color:#68d391;"> AND</span>
+      <span style="color:#fff;"> password = </span>
+      <span style="color:#fc8181;">'{{ password_shown }}'</span>
+    </div>
+    {% if injected %}
+    <div style="margin-top:10px;padding:10px 14px;background:#fff5f5;border-left:4px solid #e53e3e;border-radius:4px;font-size:12px;color:#9b2c2c;">
+      <strong>Injection detected:</strong> The single quote broke out of the username string.
+      The <code>--</code> commented out the password check. The database ignored the password entirely.
+    </div>
+    {% endif %}
+  </div>
+  {% endif %}
 </div>
 <footer>SecureBank &copy; 2026. All rights reserved.</footer>
 """
@@ -259,7 +282,8 @@ def index():
     # Redirect to dashboard if already logged in, otherwise show login
     if session.get("user"):
         return redirect(url_for("dashboard"))
-    return render_template_string(LOGIN_PAGE, message=None, msg_class="")
+    return render_template_string(LOGIN_PAGE, message=None, msg_class="",
+        query_shown=False, username_shown="", password_shown="", injected=False)
 
 @app.route("/login", methods=["POST"])
 def login():
@@ -270,6 +294,9 @@ def login():
     # A real application would use parameterized queries to prevent this
     query = f"SELECT * FROM users WHERE username = '{username}' AND password = '{password}'"
 
+    # Detect if the input contains injection characters
+    injected = any(c in username or c in password for c in ["'", "--", "#", ";", "OR", "or"])
+
     conn = sqlite3.connect("users.db")
     cursor = conn.cursor()
     try:
@@ -278,7 +305,9 @@ def login():
     except Exception as e:
         conn.close()
         return render_template_string(LOGIN_PAGE,
-            message=f"Database error: {e}", msg_class="warning")
+            message=f"Database error: {e}", msg_class="warning",
+            query_shown=True, username_shown=username,
+            password_shown=password, injected=injected)
     conn.close()
 
     if result:
@@ -288,7 +317,9 @@ def login():
         return redirect(url_for("dashboard"))
 
     return render_template_string(LOGIN_PAGE,
-        message="Invalid username or password. Please try again.", msg_class="error")
+        message="Invalid username or password. Please try again.", msg_class="error",
+        query_shown=True, username_shown=username,
+        password_shown=password, injected=injected)
 
 @app.route("/dashboard")
 def dashboard():
